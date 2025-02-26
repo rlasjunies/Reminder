@@ -16,6 +16,6 @@ Copydotnet run
 ## Install the program as a service
 
 ```shell
-Copysc create WebOpenerService binPath="C:\chemin\vers\votre\application.exe"
-sc start WebOpenerService
+sc create MyReminder binPath="C:\chemin\vers\votre\application.exe"
+sc start MyReminder
 ```

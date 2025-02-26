@@ -5,11 +5,6 @@
   "type": "object",
   "required": [ "pages" ],
   "properties": {
-    "configFilePath": {
-      "type": "string",
-      "description": "Path to the YAML configuration file",
-      "default": "config.yaml"
-    },
     "pages": {
       "type": "array",
       "description": "List of url to open automatically",

@@ -1,7 +1,15 @@
-﻿global using Microsoft.Extensions.DependencyInjection;
+﻿global using System.Diagnostics;
+global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.Extensions.Logging;
 global using Reminder;
-global using System.Diagnostics;
 global using YamlDotNet.Serialization;
 global using YamlDotNet.Serialization.NamingConventions;
+global using System;
+global using System.Drawing;
+global using System.IO;
+global using System.Windows.Forms;
+global using System.Diagnostics;
+global using System.Threading;
+global using System.Threading.Tasks;
+global using Microsoft.Extensions.Hosting;
