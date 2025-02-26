@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=./configSchema.json
+configFilePath: config.yaml
+pages:
+  - url: https://www.example.com
+    frequency: daily
+    nextOpening: 2025-02-26T15:12:18Z
+    
+  - url: https://www.example2.org
+    frequency: weekly
+    nex
+   
+  - url: https://www.example3.net
+    frequency: monthly
+    
+  - url: https://www.example4.com
+    frequency: quarterly

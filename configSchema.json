@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Web Opener Service Configuration",
+  "description": "Configuration for scheduled web page opening service",
+  "type": "object",
+  "required": [ "pages" ],
+  "properties": {
+    "configFilePath": {
+      "type": "string",
+      "description": "Path to the YAML configuration file",
+      "default": "config.yaml"
+    },
+    "pages": {
+      "type": "array",
+      "description": "List of url to open automatically",
+      "items": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "URL of the web page to open",
+            "format": "uri"
+          },
+          "frequency": {
+            "type": "string",
+            "description": "How often to open the page",
+            "enum": [ "daily", "weekly", "monthly", "quarterly" ],
+            "default": "daily"
+          },
+          "nextOpening": {
+            "type": [ "string", "null" ],
+            "description": "When the url should be opened in ISO 8601 format (e.g., 2025-02-26T15:12:18Z)",
+            "format": "date-time"
+          }
+        },
+        "required": [ "url", "frequency" ],
+        "type": "object"
+      }
+    }
+  }
+}
