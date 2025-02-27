@@ -21,6 +21,8 @@ public class SystrayApplication : Form
     {
         // Create context menu
         trayMenu = new ContextMenuStrip();
+        
+        // Shows the files
         trayMenu.Items.Add("Show Config File", null, OnShowConfig);
         trayMenu.Items.Add("Show readme File", null, OnShowReadme);
 
@@ -37,7 +39,8 @@ public class SystrayApplication : Form
         // Create tray icon
         trayIcon = new NotifyIcon();
         trayIcon.Text = "Reminder App - to remind you best practices";
-        trayIcon.Icon = SystemIcons.Application;
+        //trayIcon.Icon = SystemIcons.Application;
+        trayIcon.Icon = new Icon(Path.Combine(AppContext.BaseDirectory,"Assets", "reminder3.ico"));
         trayIcon.ContextMenuStrip = trayMenu;
         trayIcon.Visible = true;
 
