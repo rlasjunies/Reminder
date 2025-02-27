@@ -137,13 +137,15 @@
                 var existingPage = _config.Pages.FirstOrDefault(p => p.Url == page.Url && p.Frequency == page.Frequency);
                 if (existingPage != null)
                 {
+                    var nextTimeFromFile = existingPage.NextOpening ?? DateTime.Now;
+
                     existingPage.NextOpening = page.Frequency.ToLower() switch
                     {
-                        "daily" => DateTime.Now.AddDays(1),
-                        "weekly" => DateTime.Now.AddDays(7),
-                        "monthly" => DateTime.Now.AddMonths(1),
-                        "quarterly" => DateTime.Now.AddMonths(3),
-                        _ => DateTime.Now.AddDays(1)
+                        "daily" => nextTimeFromFile.AddDays(1),
+                        "weekly" => nextTimeFromFile.AddDays(7),
+                        "monthly" => nextTimeFromFile.AddMonths(1),
+                        "quarterly" => nextTimeFromFile.AddMonths(3),
+                        _ => nextTimeFromFile.AddDays(1)
                     };
                 }
             }

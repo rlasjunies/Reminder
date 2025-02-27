@@ -4,11 +4,7 @@ pages:
     frequency: daily
     nextOpening: 2025-02-26T15:12:18Z
     
-  # - url: onenote:https://siemens-my.sharepoint.com/personal/richard_lasjunies_siemens_com/Documents/Notebooks/Journal2025/Feb-25.one#2025%2002%2026&section-id={0AB20093-17D3-431C-A997-A28DA6B647D0}&page-id={B241A038-1642-4224-9397-42D0578A9F6A}&end
-  #   frequency: weekly
-  #   nextOpening: 2025-02-26T15:21:00Z
-   
-  - url: https://onedrive.live.com/redir?resid=3981CA5E56F3AD91%21387606&page=Edit&wd=target%28Reminder%20-%20strategy%20box.one%7Cff8cfb6b-8db5-426c-a9a2-10ed6d2c88c3%2FMonthly%20goals%7C5a2559be-5300-4193-82a0-13fa873d91ae%2F%29&wdorigin=703
+  - url: https://onedrive.live.com/redir?resid=3981CA5E56F3AD91%
     frequency: weekly
     
   # - url: https://www.example4.com
