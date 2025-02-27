@@ -3,7 +3,7 @@ pages:
   - url: https://www.example.com
     frequency: daily
     nextOpening: 2025-02-26T15:12:18Z
-    
+     
   - url: https://onedrive.live.com/redir?resid=3981CA5E56F3AD91%
     frequency: weekly
     
