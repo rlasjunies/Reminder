@@ -5,6 +5,7 @@ The purpose of this tool is to remind some topics we feel important by poping up
 You can use it to popup daily a energizing sentence, to remind you the goal of the month, to remind you good practice ... 
 
 ## How to use?
+
 Just start the application clicking on 'Reminder.exe', a new icon will appears in the systray. If you already configured some pages, they will be opened at the right time.
 
 You can add, remove, update pages directly in the configuration file, which is accessible from the context menu in the systray app.

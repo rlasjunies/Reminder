@@ -1,4 +1,6 @@
 using Microsoft.Win32;
+using Reminder.Compiler;
+using Reminder.Reminder;
 
 namespace Reminder;
 
@@ -27,8 +29,10 @@ public class SystrayApplication : Form
         trayMenu.Items.Add("Show readme File", null, OnShowReadme);
 
         // Add service control menu items
-        serviceStatusMenuItem = new ToolStripMenuItem("Service Status: Stopped");
-        serviceStatusMenuItem.Enabled = false;
+        serviceStatusMenuItem = new ToolStripMenuItem("Service Status: Stopped")
+        {
+            Enabled = false
+        };
         //trayMenu.Items.Add(serviceStatusMenuItem);
         //trayMenu.Items.Add("Start Service", null, OnStartService);
         //trayMenu.Items.Add("Stop Service", null, OnStopService);
@@ -37,12 +41,14 @@ public class SystrayApplication : Form
         trayMenu.Items.Add("Exit", null, OnExit);
 
         // Create tray icon
-        trayIcon = new NotifyIcon();
-        trayIcon.Text = "Reminder App - to remind you best practices";
-        //trayIcon.Icon = SystemIcons.Application;
-        trayIcon.Icon = new Icon(Path.Combine(AppContext.BaseDirectory,"Assets", "reminder3.ico"));
-        trayIcon.ContextMenuStrip = trayMenu;
-        trayIcon.Visible = true;
+        trayIcon = new NotifyIcon
+        {
+            Text = "Reminder App - to remind you best practices",
+            //trayIcon.Icon = SystemIcons.Application;
+            Icon = new Icon(Path.Combine(AppContext.BaseDirectory, "Assets", "reminder3.ico")),
+            ContextMenuStrip = trayMenu,
+            Visible = true
+        };
 
         // Configure the form
         this.WindowState = FormWindowState.Minimized;
@@ -59,7 +65,8 @@ public class SystrayApplication : Form
             .ConfigureServices((hostContext, services) =>
             {
                 services.AddSingleton<ReminderService>();
-                services.AddHostedService<ReminderWindowsService>();
+                services.AddHostedService<ReminderBackgroundService>();
+                services.AddHostedService<CompilerBackgroundService>();
             })
             .Build();
         //host.RunAsync();
@@ -156,16 +163,14 @@ public class SystrayApplication : Form
 
     public static void SetStartWithWindows(bool enable)
     {
-        using (RegistryKey key = Registry.CurrentUser.OpenSubKey(RunRegistryKey, true))
+        using RegistryKey key = Registry.CurrentUser.OpenSubKey(RunRegistryKey, true);
+        if (enable)
         {
-            if (enable)
-            {
-                key.SetValue("MySystrayApp", Application.ExecutablePath);
-            }
-            else
-            {
-                key.DeleteValue("MySystrayApp", false);
-            }
+            key.SetValue("MySystrayApp", Application.ExecutablePath);
+        }
+        else
+        {
+            key.DeleteValue("MySystrayApp", false);
         }
     }
     [STAThread]

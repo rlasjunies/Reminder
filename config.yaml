@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=./configSchema.json
 pages:
-  - url: https://www.example.com
+  - url: https://learn.microsoft.com/en-us/dotnet/core/extensions/logging?tabs=command-line#get-started
     frequency: daily
     nextOpening: 2025-02-26T15:12:18Z
      
