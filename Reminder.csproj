@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>CS8618;CS8622;CS8600;CS8602;CS8604;CS0105;CS9113;CS1998</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,10 +18,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Update="extensions\extension_hello_world.cs">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Compile>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="extensions\**" />
+    <ExtensionFiles Include="extensions\*.cs" />
+  </ItemGroup>
+
+  <Target Name="CopyExtensions" AfterTargets="Build">
+    <Copy SourceFiles="@(ExtensionFiles)" DestinationFolder="$(OutputPath)extensions\" />
+  </Target>
 
   <ItemGroup>
     <None Update="Assets\reminder.ico">

@@ -1,16 +1,22 @@
-﻿using Reminder.Compiler;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 //using CSharpCompilerWatcher;
 using Microsoft.Extensions.Logging;
+using Reminder.Compiler;
 
 namespace test
 {
     public class HelloWorldScript : IExtension
     {
-        //private ILogger _logger;
-
+        public string Name => "Hello World Extension example";
+        public string Version => "1.0.0"; 
+        public string Description => "Simple example showing a message box with a greeting";
+        
         private string _message;
+        
+        public IEnumerable<ExtensionMenuItem>? GetMenuItems() => null; // No menu items
+        
         public void Prepare(ILogger logger)
         {
             // In a real application, you'd inject the logger

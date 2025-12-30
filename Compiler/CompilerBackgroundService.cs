@@ -1,12 +1,23 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.IO.Packaging;
+using System.Reflection;
+using System.Text;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Reminder.Reminder;
-using System.IO.Packaging;
-using System.Reflection;
-using System.Text;
 
 namespace Reminder.Compiler;
+
+public class ExtensionInfo
+{
+    public string FileName { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Version { get; set; } = "";
+    public string Description { get; set; } = "";
+    public bool IsLoaded { get; set; }
+    public string? ErrorMessage { get; set; }
+    public IEnumerable<ExtensionMenuItem>? MenuItems { get; set; }
+}
 
 public class CompilerBackgroundService(
     //CompilerService compilerService,
@@ -15,21 +26,11 @@ public class CompilerBackgroundService(
 
     private static readonly Dictionary<string, DateTime> _lastModifiedTimes = [];
     private static string _watchFolder;
+    public static List<ExtensionInfo> Extensions { get; } = new();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        //// Initial configuration loading and configuration file watcher setup
-        //compilerService.Prepare();
-
-        //// Main service loop
-        //while (!stoppingToken.IsCancellationRequested)
-        //{
-        //    compilerService.Execute();
-        //    // Check every minute
-        //    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-        //}
-
-        // Set the directory to watch - change this to your target directory
+        // Set the directory to watch for extension files
         _watchFolder = Path.Combine(Environment.CurrentDirectory, "extensions");
 
         // Ensure the directory exists
@@ -90,6 +91,70 @@ public class CompilerBackgroundService(
         }
     }
 
+    private static List<string> ParseExtensionDependencies(string code)
+    {
+        var dependencies = new List<string>();
+
+        // Look for comments:
+        // Dependencies: Assembly1, Assembly2
+        // Dependencies: Assembly3
+        // Or:
+        // Dependencies:
+        //   Assembly1
+        //   Assembly2
+        var lines = code.Split('\n');
+        bool inDependenciesSection = false;
+
+        foreach (var line in lines)
+        {
+            var trimmed = line.Trim();
+
+            if (trimmed.StartsWith("// Dependencies:", StringComparison.OrdinalIgnoreCase))
+            {
+                inDependenciesSection = true;
+                var depString = trimmed.Substring("// Dependencies:".Length).Trim();
+                if (!string.IsNullOrEmpty(depString))
+                {
+                    // Parse dependencies on same line
+                    var deps = depString.Split(',');
+                    foreach (var dep in deps)
+                    {
+                        var cleanDep = dep.Trim();
+                        if (!string.IsNullOrEmpty(cleanDep))
+                        {
+                            dependencies.Add(cleanDep);
+                        }
+                    }
+                }
+            }
+            else if (inDependenciesSection && trimmed.StartsWith("//"))
+            {
+                // Parse continuation lines like "//   Assembly1"
+                var depString = trimmed.Substring(2).Trim();
+                if (!string.IsNullOrEmpty(depString))
+                {
+                    // Check if it contains commas (multiple deps on one line)
+                    var deps = depString.Split(',');
+                    foreach (var dep in deps)
+                    {
+                        var cleanDep = dep.Trim();
+                        if (!string.IsNullOrEmpty(cleanDep))
+                        {
+                            dependencies.Add(cleanDep);
+                        }
+                    }
+                }
+            }
+            else if (inDependenciesSection && !trimmed.StartsWith("//"))
+            {
+                // End of dependency comments section
+                break;
+            }
+        }
+
+        return dependencies;
+    }
+
     private static void CompileAndRunFile(string filePath, ILogger<CompilerBackgroundService> logger)
     {
         Console.WriteLine($"Compiling: {filePath}");
@@ -98,6 +163,10 @@ public class CompilerBackgroundService(
         {
             string code = File.ReadAllText(filePath);
 
+            // Parse extension dependencies from comments
+            var extensionDependencies = ParseExtensionDependencies(code);
+            logger.LogInformation($"Found {extensionDependencies.Count} extension dependencies: {string.Join(", ", extensionDependencies)}");
+
             // References needed for compilation
             var references = new List<MetadataReference>
                 {
@@ -105,7 +174,10 @@ public class CompilerBackgroundService(
                     MetadataReference.CreateFromFile(typeof(Console).Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(System.Runtime.AssemblyTargetedPatchBandAttribute).Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(System.Windows.Forms.MessageBox).Assembly.Location),
-                    MetadataReference.CreateFromFile(Assembly.GetExecutingAssembly().Location)
+                    MetadataReference.CreateFromFile(Assembly.GetExecutingAssembly().Location),
+                    MetadataReference.CreateFromFile(typeof(DateTime).Assembly.Location),
+                    MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
+                    MetadataReference.CreateFromFile(typeof(StreamReader).Assembly.Location)
                 };
 
             // Get System.Runtime
@@ -114,6 +186,106 @@ public class CompilerBackgroundService(
             {
                 references.Add(MetadataReference.CreateFromFile(runtimePath));
             }
+
+            // Add Microsoft.Extensions.Logging for AddLogging
+            try
+            {
+                var loggingAssembly = Assembly.Load("Microsoft.Extensions.Logging");
+                references.Add(MetadataReference.CreateFromFile(loggingAssembly.Location));
+                logger.LogInformation($"Added reference to Microsoft.Extensions.Logging");
+            }
+            catch
+            {
+                logger.LogWarning("Could not load Microsoft.Extensions.Logging");
+            }
+
+            // Add extension-specific dependencies
+            foreach (var dep in extensionDependencies)
+            {
+                try
+                {
+                    var assembly = Assembly.Load(dep);
+                    references.Add(MetadataReference.CreateFromFile(assembly.Location));
+                    logger.LogInformation($"✓ Added extension dependency: {dep} from {assembly.Location}");
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning($"✗ Could not load extension dependency: {dep} - {ex.Message}");
+                }
+            }
+
+            // Add System assemblies
+            try
+            {
+                var systemAssemblies = new[]
+                {
+                    "System.Text.Json",
+                    "System.IO",
+                    "System.Threading.Tasks",
+                    "System.Threading",
+                    "System.Linq",
+                    "System.Collections",
+                    "netstandard"
+                };
+
+                foreach (var assemblyName in systemAssemblies)
+                {
+                    try
+                    {
+                        var assembly = Assembly.Load(assemblyName);
+                        references.Add(MetadataReference.CreateFromFile(assembly.Location));
+                        logger.LogInformation($"Added reference to {assemblyName}");
+                    }
+                    catch
+                    {
+                        logger.LogWarning($"Could not load {assemblyName}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning($"Warning loading System references: {ex.Message}");
+            }
+
+            // Add ASP.NET Core references for Minimal API support
+            try
+            {
+                var aspNetCoreAssemblies = new[]
+                {
+                    "Microsoft.AspNetCore",
+                    "Microsoft.AspNetCore.Hosting",
+                    "Microsoft.AspNetCore.Hosting.Abstractions",
+                    "Microsoft.AspNetCore.Http",
+                    "Microsoft.AspNetCore.Http.Abstractions",
+                    "Microsoft.AspNetCore.Http.Results",
+                    "Microsoft.AspNetCore.Routing",
+                    "Microsoft.Extensions.Hosting",
+                    "Microsoft.Extensions.Hosting.Abstractions",
+                    "Microsoft.Extensions.DependencyInjection",
+                    "Microsoft.Extensions.DependencyInjection.Abstractions",
+                    "Microsoft.Net.Http.Headers"
+                };
+
+                foreach (var assemblyName in aspNetCoreAssemblies)
+                {
+                    try
+                    {
+                        var assembly = Assembly.Load(assemblyName);
+                        references.Add(MetadataReference.CreateFromFile(assembly.Location));
+                        logger.LogInformation($"Added reference to {assemblyName}");
+                    }
+                    catch
+                    {
+                        // Assembly not available, skip it
+                        logger.LogWarning($"Could not load {assemblyName}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning($"Warning loading ASP.NET Core references: {ex.Message}");
+            }
+
             //runtimePath = Path.Combine(Path.GetDirectoryName(typeof(object).Assembly.Location), "Microsoft.Extensions.Logging.Abstractions");
             //if (File.Exists(runtimePath))
             //{
@@ -130,55 +302,8 @@ public class CompilerBackgroundService(
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Warning: Could not load Microsoft.Extensions.Logging.Abstractions: {ex.Message}");
-                Console.WriteLine("Scripts that use ILogger may not compile correctly.");
-
-                // You might want to provide a default path to the DLL or prompt user for path
-                // Example of specifying an explicit path:
-                string nugetPackagesFolder = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    ".nuget", "packages");
-
-                // This path will need to be adjusted based on installed version
-                string[] possibleVersions = { "6.0.0", "5.0.0", "7.0.0", "3.1.0" };
-                string[] possibleFrameworks = { "net6.0", "net5.0", "netstandard2.1", "netstandard2.0" };
-
-                bool found = false;
-                foreach (var version in possibleVersions)
-                {
-                    foreach (var framework in possibleFrameworks)
-                    {
-                        string loggingPath = Path.Combine(
-                            nugetPackagesFolder,
-                            "microsoft.extensions.logging.abstractions",
-                            version,
-                            "lib", framework,
-                            "Microsoft.Extensions.Logging.Abstractions.dll");
-
-                        if (File.Exists(loggingPath))
-                        {
-                            references.Add(MetadataReference.CreateFromFile(loggingPath));
-                            logger.LogInformation($"Added reference to Logging.Abstractions from NuGet cache: {loggingPath}");
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) 
-                        break;
-                }
-
-                if (!found)
-                {
-                    logger.LogWarning("Could not find Microsoft.Extensions.Logging.Abstractions.dll. Scripts using ILogger may not compile.");
-                }
-
-                //if (File.Exists(loggingPath))
-                //{
-                //    references.Add(MetadataReference.CreateFromFile(loggingPath));
-                //    Console.WriteLine($"Added reference to Logging.Abstractions from NuGet cache");
-                //}
+                logger.LogWarning("Could not load Microsoft.Extensions.Logging.Abstractions: {Message}", ex.Message);
             }
-
 
             // Create compilation
             var compilation = CSharpCompilation.Create(
@@ -206,8 +331,34 @@ public class CompilerBackgroundService(
                     {
                         sb.AppendLine($"{diagnostic.Id}: {diagnostic.GetMessage()}");
                     }
-                    logger.LogInformation(sb.ToString());
-                    Console.WriteLine(sb.ToString());
+                    string errorMessage = sb.ToString();
+                    logger.LogError(errorMessage);
+                    Console.WriteLine(errorMessage);
+
+                    // Update extension info with error
+                    lock (Extensions)
+                    {
+                        var fileName = Path.GetFileName(filePath);
+                        var existing = Extensions.FirstOrDefault(e => e.FileName == fileName);
+                        if (existing != null)
+                        {
+                            existing.IsLoaded = false;
+                            existing.ErrorMessage = errorMessage;
+                        }
+                        else
+                        {
+                            Extensions.Add(new ExtensionInfo
+                            {
+                                FileName = fileName,
+                                Name = fileName,
+                                IsLoaded = false,
+                                ErrorMessage = errorMessage
+                            });
+                        }
+                    }
+
+                    // Show error popup
+                    ShowCompilationErrorPopup(Path.GetFileName(filePath), errorMessage);
                 }
                 else
                 {
@@ -231,6 +382,37 @@ public class CompilerBackgroundService(
 
                                     // Create an instance of the script
                                     IExtension script = (IExtension)Activator.CreateInstance(type);
+
+                                    // Update extension info
+                                    lock (Extensions)
+                                    {
+                                        var fileName = Path.GetFileName(filePath);
+                                        var existing = Extensions.FirstOrDefault(e => e.FileName == fileName);
+                                        if (existing != null)
+                                        {
+                                            existing.Name = script.Name;
+                                            existing.Version = script.Version;
+                                            existing.Description = script.Description;
+                                            existing.IsLoaded = true;
+                                            existing.ErrorMessage = null;
+                                            existing.MenuItems = script.GetMenuItems();
+                                        }
+                                        else
+                                        {
+                                            Extensions.Add(new ExtensionInfo
+                                            {
+                                                FileName = fileName,
+                                                Name = script.Name,
+                                                Version = script.Version,
+                                                Description = script.Description,
+                                                IsLoaded = true,
+                                                ErrorMessage = null,
+                                                MenuItems = script.GetMenuItems()
+                                            });
+                                        }
+                                    }
+
+                                    logger.LogInformation("Loaded extension: {} v{}", script.Name, script.Version);
 
                                     // Call Prepare method first
                                     logger.LogInformation("Calling Prepare() on {}", type.Name);
@@ -265,6 +447,96 @@ public class CompilerBackgroundService(
             {
                 Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
             }
+        }
+    }
+
+    private static void ShowCompilationErrorPopup(string fileName, string errorMessage)
+    {
+        // Show popup in UI thread
+        var thread = new Thread(() =>
+        {
+            var form = new CompilationErrorForm(fileName, errorMessage);
+            Application.Run(form);
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+    }
+}
+
+public class CompilationErrorForm : Form
+{
+    private TextBox errorTextBox;
+    private Button copyButton;
+
+    public CompilationErrorForm(string fileName, string errorMessage)
+    {
+        InitializeComponents(fileName, errorMessage);
+    }
+
+    private void InitializeComponents(string fileName, string errorMessage)
+    {
+        this.Text = $"Compilation Error - {fileName}";
+        this.Size = new Size(800, 600);
+        this.StartPosition = FormStartPosition.CenterScreen;
+        this.FormBorderStyle = FormBorderStyle.Sizable;
+        this.MinimizeBox = true;
+        this.MaximizeBox = true;
+
+        // Copy button at top
+        copyButton = new Button
+        {
+            Text = "📋 Copy Error to Clipboard",
+            Dock = DockStyle.Top,
+            Height = 50,
+            Font = new Font("Segoe UI", 12, FontStyle.Bold),
+            BackColor = Color.FromArgb(0, 120, 215),
+            ForeColor = Color.White,
+            FlatStyle = FlatStyle.Flat,
+            Cursor = Cursors.Hand
+        };
+        copyButton.FlatAppearance.BorderSize = 0;
+        copyButton.Click += CopyButton_Click;
+
+        // Error text box
+        errorTextBox = new TextBox
+        {
+            Multiline = true,
+            ReadOnly = true,
+            Dock = DockStyle.Fill,
+            Font = new Font("Consolas", 10),
+            Text = errorMessage,
+            ScrollBars = ScrollBars.Both,
+            WordWrap = false,
+            BackColor = Color.FromArgb(30, 30, 30),
+            ForeColor = Color.FromArgb(220, 220, 220)
+        };
+
+        this.Controls.Add(errorTextBox);
+        this.Controls.Add(copyButton);
+    }
+
+    private void CopyButton_Click(object sender, EventArgs e)
+    {
+        try
+        {
+            Clipboard.SetText(errorTextBox.Text);
+            copyButton.Text = "✓ Copied to Clipboard!";
+            copyButton.BackColor = Color.FromArgb(16, 124, 16);
+
+            // Reset button text after 2 seconds
+            var timer = new System.Windows.Forms.Timer { Interval = 2000 };
+            timer.Tick += (s, args) =>
+            {
+                copyButton.Text = "📋 Copy Error to Clipboard";
+                copyButton.BackColor = Color.FromArgb(0, 120, 215);
+                timer.Stop();
+                timer.Dispose();
+            };
+            timer.Start();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to copy: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
