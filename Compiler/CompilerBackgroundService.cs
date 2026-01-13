@@ -31,7 +31,7 @@ public class CompilerBackgroundService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Set the directory to watch for extension files
-        _watchFolder = Path.Combine(Environment.CurrentDirectory, "extensions");
+        _watchFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "extensions");
 
         // Ensure the directory exists
         if (!Directory.Exists(_watchFolder))
