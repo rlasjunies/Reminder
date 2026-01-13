@@ -2,14 +2,14 @@
 
 The purpose of this tool is to remind some topics we feel important by poping up urls at a regular period.
 
-You can use it to popup daily a energizing sentence, to remind you the goal of the month, to remind you good practice ... 
+You can use it to popup daily a energizing sentence, to remind you the goal of the month, to remind you good practice ...
 
 ## How to use?
 
 Just start the application clicking on 'Reminder.exe', a new icon will appears in the systray. If you already configured some pages, they will be opened at the right time.
 
 You can add, remove, update pages directly in the configuration file, which is accessible from the context menu in the systray app.
-The configuration will be reloaded automatically as soon you save it. 
+The configuration will be reloaded automatically as soon you save it.
 
 The application execute the configuration every minute.
 
@@ -63,11 +63,13 @@ namespace MyExtensions
 ```
 
 **Required Properties:**
+
 - `Name` - Friendly name for your extension (shown in systray menu)
 - `Version` - Version number (shown in systray menu)
 - `Description` - Brief description of functionality (shown in systray menu)
 
 **Required Methods:**
+
 - `Prepare(ILogger)` - Initialization method called first
 - `Execute(ILogger)` - Main execution method called after Prepare
 
@@ -84,6 +86,7 @@ Extensions can declare their required assemblies using comments at the top of th
 ```
 
 The compiler will automatically load these assemblies during compilation. Common dependencies include:
+
 - `System.Text.Json` - JSON serialization
 - `Microsoft.AspNetCore.*` - Web server functionality
 - `System.IO` - File operations
@@ -93,6 +96,7 @@ The compiler will automatically load these assemblies during compilation. Common
 ### Viewing Loaded Extensions
 
 Open the systray menu to see the **"Loaded Extensions"** submenu. It displays:
+
 - ✅ Successfully loaded extensions with name, version, and description
 - ❌ Failed extensions with error details
 
@@ -143,12 +147,14 @@ Full-featured ASP.NET Core web server with HTML interface and REST APIs:
 ```
 
 **Features:**
+
 - ASP.NET Core Minimal API
 - Beautiful HTML/CSS/JavaScript interface
 - Multiple endpoints (pages and APIs)
 - Real-time status monitoring
 
 **Endpoints:**
+
 - `GET /` - Main web interface with interactive features
 - `GET /about` - About page with extension information
 - `GET /api/status` - JSON status endpoint
@@ -159,6 +165,7 @@ Visit `http://localhost:5001` in your browser after starting the application.
 ### Technical Capabilities
 
 Extensions have access to:
+
 - ✅ .NET 9.0 Framework
 - ✅ Windows Forms (MessageBox, Forms, Controls)
 - ✅ ASP.NET Core (Minimal API, Kestrel server, middleware)
@@ -181,12 +188,14 @@ Extensions have access to:
 ### Error Handling
 
 If an extension fails to compile:
+
 1. A popup window displays the compilation errors
 2. The extension appears in the systray menu marked with ❌
 3. Click the failed extension to view errors again
 4. Use the "Copy Error" button to paste errors for debugging
 
 Common errors and solutions:
+
 - **Missing types** - Add required dependencies in the `// Dependencies:` section
 - **Missing using statements** - Add appropriate `using` directives
 - **Syntax errors** - Check C# syntax (same as regular C# files)
@@ -214,4 +223,3 @@ pages:
   # - url: https://www.example4.com
   #   frequency: quarterly
 ```
-
